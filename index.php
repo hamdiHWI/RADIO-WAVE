@@ -1,150 +1,215 @@
-<?php
-declare(strict_types=1);
-@ini_set('display_errors', '1');
-@error_reporting(E_ALL);
-@date_default_timezone_set('UTC');
-
-$phpVersion = PHP_VERSION;
-$now = date('Y-m-d H:i:s');
-?>
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>New Style</title>
-<?php
-// Read project preview data from environment
-$projectDescription = $_SERVER['PROJECT_DESCRIPTION'] ?? '';
-$projectImageUrl = $_SERVER['PROJECT_IMAGE_URL'] ?? '';
-?>
-<?php if ($projectDescription): ?>
-  <!-- Meta description -->
-  <meta name="description" content='<?= htmlspecialchars($projectDescription) ?>' />
-  <!-- Open Graph meta tags -->
-  <meta property="og:description" content="<?= htmlspecialchars($projectDescription) ?>" />
-  <!-- Twitter meta tags -->
-  <meta property="twitter:description" content="<?= htmlspecialchars($projectDescription) ?>" />
-<?php endif; ?>
-<?php if ($projectImageUrl): ?>
-  <!-- Open Graph image -->
-  <meta property="og:image" content="<?= htmlspecialchars($projectImageUrl) ?>" />
-  <!-- Twitter image -->
-  <meta property="twitter:image" content="<?= htmlspecialchars($projectImageUrl) ?>" />
-<?php endif; ?>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg-color-start: #6a11cb;
-      --bg-color-end: #2575fc;
-      --text-color: #ffffff;
-      --card-bg-color: rgba(255, 255, 255, 0.01);
-      --card-border-color: rgba(255, 255, 255, 0.1);
-    }
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(45deg, var(--bg-color-start), var(--bg-color-end));
-      color: var(--text-color);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      text-align: center;
-      overflow: hidden;
-      position: relative;
-    }
-    body::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M-10 10L110 10M10 -10L10 110" stroke-width="1" stroke="rgba(255,255,255,0.05)"/></svg>');
-      animation: bg-pan 20s linear infinite;
-      z-index: -1;
-    }
-    @keyframes bg-pan {
-      0% { background-position: 0% 0%; }
-      100% { background-position: 100% 100%; }
-    }
-    main {
-      padding: 2rem;
-    }
-    .card {
-      background: var(--card-bg-color);
-      border: 1px solid var(--card-border-color);
-      border-radius: 16px;
-      padding: 2rem;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-    }
-    .loader {
-      margin: 1.25rem auto 1.25rem;
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(255, 255, 255, 0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    .hint {
-      opacity: 0.9;
-    }
-    .sr-only {
-      position: absolute;
-      width: 1px; height: 1px;
-      padding: 0; margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap; border: 0;
-    }
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      margin: 0 0 1rem;
-      letter-spacing: -1px;
-    }
-    p {
-      margin: 0.5rem 0;
-      font-size: 1.1rem;
-    }
-    code {
-      background: rgba(0,0,0,0.2);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-    footer {
-      position: absolute;
-      bottom: 1rem;
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Wave</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
 </head>
 <body>
-  <main>
-    <div class="card">
-      <h1>Analyzing your requirements and generating your website…</h1>
-      <div class="loader" role="status" aria-live="polite" aria-label="Applying initial changes">
-        <span class="sr-only">Loading…</span>
-      </div>
-      <p class="hint"><?= ($_SERVER['HTTP_HOST'] ?? '') === 'appwizzy.com' ? 'AppWizzy' : 'Flatlogic' ?> AI is collecting your requirements and applying the first changes.</p>
-      <p class="hint">This page will update automatically as the plan is implemented.</p>
-      <p>Runtime: PHP <code><?= htmlspecialchars($phpVersion) ?></code> — UTC <code><?= htmlspecialchars($now) ?></code></p>
+    <div id="app-container">
+        <!-- Sidebar with station lists -->
+        <div id="sidebar">
+            <div id="sidebar-header">
+                <h1>Radio Wave</h1>
+                <div class="theme-switcher">
+                    <i class="fas fa-sun"></i>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <i class="fas fa-moon"></i>
+                </div>
+            </div>
+            <div id="sidebar-tabs">
+                <button class="tab-link active" data-tab="my-stations-tab">My Stations</button>
+                <button class="tab-link" data-tab="discover-tab">Discover</button>
+            </div>
+
+            <!-- My Stations Tab -->
+            <div id="my-stations-tab" class="tab-content active">
+                <div class="toolbar">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Search stations...">
+                    </div>
+                    <div class="filter-bar">
+                        <select id="genre-filter">
+                            <option value="all">All Genres</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="station-list">
+                    <!-- Stations will be dynamically loaded here -->
+                </div>
+                <button id="add-station-btn" class="sidebar-btn"><i class="fas fa-plus"></i> Add New Station</button>
+            </div>
+
+            <!-- Discover Tab -->
+            <div id="discover-tab" class="tab-content">
+                <div class="toolbar">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="discover-search-input" placeholder="Search global library...">
+                    </div>
+                </div>
+                <div id="discover-list">
+                    <!-- Global stations will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content with player and visualizer -->
+        <div id="main-content">
+            <div id="visualizer-container">
+                <canvas id="visualizer"></canvas>
+            </div>
+            <div id="player-container">
+                <div id="now-playing">
+                    <img id="station-art" src="assets/images/default-art.png" alt="Station Art">
+                    <div id="station-info">
+                        <h2 id="player-station-name">Select a Station</h2>
+                        <p id="player-station-genre">---</p>
+                    </div>
+                </div>
+                <div id="player-controls">
+                    <button id="prev-station-btn" title="Previous Station"><i class="fas fa-backward"></i></button>
+                    <button id="play-pause-btn" class="play-btn" title="Play/Pause"><i class="fas fa-play"></i></button>
+                    <button id="next-station-btn" title="Next Station"><i class="fas fa-forward"></i></button>
+                    <button id="record-btn" title="Start Recording"><i class="fas fa-circle"></i></button>
+                </div>
+                <div class="volume-control">
+                    <i class="fas fa-volume-down"></i>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+                    <i class="fas fa-volume-up"></i>
+                </div>
+            </div>
+            <div id="recommendations-container">
+                <h3>You might also like...</h3>
+                <div id="recommendations-list">
+                    <!-- AI recommendations will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- App-wide controls -->
+        <div id="app-controls">
+            <button id="settings-btn" title="Settings"><i class="fas fa-cog"></i></button>
+            <button id="equalizer-btn" title="Equalizer"><i class="fas fa-sliders-h"></i></button>
+            <button id="sleep-timer-btn" title="Sleep Timer"><i class="fas fa-clock"></i></button>
+            <button id="import-export-btn" title="Import/Export"><i class="fas fa-file-import"></i></button>
+        </div>
     </div>
-  </main>
-  <footer>
-    Page updated: <?= htmlspecialchars($now) ?> (UTC)
-  </footer>
+
+    <!-- Modals -->
+    <!-- Add/Edit Station Modal -->
+    <div id="station-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2 id="modal-title">Add Station</h2>
+            <form id="station-form">
+                <input type="hidden" id="station-id">
+                <label for="station-name">Name:</label>
+                <input type="text" id="station-name" required>
+                <label for="station-url">Stream URL:</label>
+                <input type="url" id="station-url" required>
+                <label for="station-genre">Genre:</label>
+                <input type="text" id="station-genre" placeholder="e.g., Rock, Pop, News">
+                <button type="submit" id="save-station-btn">Save Station</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Settings</h2>
+            <div class="color-picker-section">
+                <h3>Customize Colors</h3>
+                <div class="color-input">
+                    <label for="primary-color">Primary:</label>
+                    <input type="color" id="primary-color" value="#3498db">
+                </div>
+                <div class="color-input">
+                    <label for="accent-color">Accent:</label>
+                    <input type="color" id="accent-color" value="#2ecc71">
+                </div>
+                <div class="color-input">
+                    <label for="text-color-light">Text (Light):</label>
+                    <input type="color" id="text-color-light" value="#2c3e50">
+                </div>
+                 <div class="color-input">
+                    <label for="text-color-dark">Text (Dark):</label>
+                    <input type="color" id="text-color-dark" value="#ecf0f1">
+                </div>
+                <button id="reset-colors-btn">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sleep Timer Modal -->
+    <div id="sleep-timer-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Sleep Timer</h2>
+            <p>Stop playback after:</p>
+            <div id="timer-options">
+                <button class="timer-option" data-minutes="15">15 min</button>
+                <button class="timer-option" data-minutes="30">30 min</button>
+                <button class="timer-option" data-minutes="60">60 min</button>
+            </div>
+            <p id="timer-display">Timer not set</p>
+            <button id="cancel-timer-btn">Cancel Timer</button>
+        </div>
+    </div>
+
+    <!-- Import/Export Modal -->
+    <div id="import-export-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Import / Export</h2>
+            <div class="import-section">
+                <h3>Import Stations</h3>
+                <p>Load stations from a `.json` file.</p>
+                <input type="file" id="import-file-input" accept=".json">
+                <button id="import-btn">Import</button>
+            </div>
+            <div class="export-section">
+                <h3>Export Stations</h3>
+                <p>Save your current station list to a file.</p>
+                <button id="export-btn">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equalizer Modal -->
+    <div id="equalizer-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Graphic Equalizer</h2>
+            <div id="equalizer-controls">
+                <div class="eq-presets">
+                    <label for="eq-presets-select">Presets:</label>
+                    <select id="eq-presets-select">
+                        <option value="custom">Custom</option>
+                        <option value="flat">Flat</option>
+                        <option value="bass-boost">Bass Boost</option>
+                        <option value="rock">Rock</option>
+                        <option value="pop">Pop</option>
+                        <option value="vocal-booster">Vocal Booster</option>
+                    </select>
+                </div>
+                <div id="eq-bands">
+                    <!-- EQ sliders will be generated by JS -->
+                </div>
+                <button id="reset-eq-btn">Reset EQ</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audio-player" crossOrigin="anonymous"></audio>
+    <script src="assets/js/main.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
