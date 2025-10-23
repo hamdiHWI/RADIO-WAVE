@@ -47,39 +47,42 @@ class RadioWave {
             'new-station-name', 'new-station-url', 'new-station-logo', 'new-station-genre',
             'equalizer-modal', 'equalizer-controls', 'eq-preset-select', 'eq-reset-button', 'eq-bands-container'
         ];
-        ids.forEach(id => this.ui[id] = document.getElementById(id));
+        ids.forEach(id => {
+            const camelCaseId = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
+            this.ui[camelCaseId] = document.getElementById(id);
+        });
         
         this.ui.modalCloseButtons = document.querySelectorAll('.modal .close-button');
         this.ui.tabLinks = document.querySelectorAll('.tab-link');
     }
 
     bindEvents() {
-        this.ui.play-pause-button.addEventListener('click', () => this.togglePlayPause());
-        this.ui.next-station.addEventListener('click', () => this.playNextStation());
-        this.ui.prev-station.addEventListener('click', () => this.playPreviousStation());
-        this.ui.volume-slider.addEventListener('input', (e) => this.setVolume(e.target.value));
-        this.ui.station-list.addEventListener('click', (e) => this.handleStationClick(e));
-        this.ui.search-input.addEventListener('input', (e) => this.filterStations(e.target.value));
-        this.ui.theme-switcher.addEventListener('click', () => this.toggleTheme());
+        this.ui.playPauseButton.addEventListener('click', () => this.togglePlayPause());
+        this.ui.nextStation.addEventListener('click', () => this.playNextStation());
+        this.ui.prevStation.addEventListener('click', () => this.playPreviousStation());
+        this.ui.volumeSlider.addEventListener('input', (e) => this.setVolume(e.target.value));
+        this.ui.stationList.addEventListener('click', (e) => this.handleStationClick(e));
+        this.ui.searchInput.addEventListener('input', (e) => this.filterStations(e.target.value));
+        this.ui.themeSwitcher.addEventListener('click', () => this.toggleTheme());
 
         // Modals
-        this.ui.settings-button.addEventListener('click', () => this.showModal('settings-modal'));
-        this.ui.add-station-button.addEventListener('click', () => this.showModal('add-station-modal'));
-        this.ui.equalizer-button.addEventListener('click', () => this.showModal('equalizer-modal'));
+        this.ui.settingsButton.addEventListener('click', () => this.showModal(this.ui.settingsModal));
+        this.ui.addStationButton.addEventListener('click', () => this.showModal(this.ui.addStationModal));
+        this.ui.equalizerButton.addEventListener('click', () => this.showModal(this.ui.equalizerModal));
         this.ui.modalCloseButtons.forEach(btn => btn.addEventListener('click', () => this.hideAllModals()));
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) this.hideAllModals();
         });
 
         // Settings
-        this.ui.color-picker.addEventListener('input', (e) => this.applyAccentColor(e.target.value));
-        this.ui.sleep-timer-select.addEventListener('change', (e) => this.setSleepTimer(e.target.value));
-        this.ui.import-button.addEventListener('click', () => this.ui.import-file-input.click());
-        this.ui.import-file-input.addEventListener('change', (e) => this.importStations(e));
-        this.ui.export-button.addEventListener('click', () => this.exportStations());
+        this.ui.colorPicker.addEventListener('input', (e) => this.applyAccentColor(e.target.value));
+        this.ui.sleepTimerSelect.addEventListener('change', (e) => this.setSleepTimer(e.target.value));
+        this.ui.importButton.addEventListener('click', () => this.ui.importFileInput.click());
+        this.ui.importFileInput.addEventListener('change', (e) => this.importStations(e));
+        this.ui.exportButton.addEventListener('click', () => this.exportStations());
 
         // Add Station Form
-        this.ui.add-station-form.addEventListener('submit', (e) => this.addStation(e));
+        this.ui.addStationForm.addEventListener('submit', (e) => this.addStation(e));
 
         // Tabs
         this.ui.tabLinks.forEach(link => {
@@ -91,7 +94,7 @@ class RadioWave {
         this.audio.addEventListener('pause', () => this.isPlaying = false);
 
         // Equalizer & Recorder
-        this.ui.record-button.addEventListener('click', () => this.toggleRecording());
+        this.ui.recordButton.addEventListener('click', () => this.toggleRecording());
         this.initEqualizer();
 
         // Keyboard shortcuts
@@ -113,7 +116,7 @@ class RadioWave {
     }
 
     renderStationList() {
-        this.ui.station-list.innerHTML = '';
+        this.ui.stationList.innerHTML = '';
         this.stations.forEach((station, index) => {
             const li = document.createElement('li');
             li.dataset.index = index;
@@ -122,22 +125,22 @@ class RadioWave {
                 <img src="${station.logo || 'https://picsum.photos/seed/'+station.name+'/40'}" alt="${station.name}">
                 <span>${station.name}</span>
             `;
-            this.ui.station-list.appendChild(li);
+            this.ui.stationList.appendChild(li);
         });
     }
 
     addStation(e) {
         e.preventDefault();
         const newStation = {
-            name: this.ui.new-station-name.value,
-            url: this.ui.new-station-url.value,
-            logo: this.ui.new-station-logo.value,
-            genre: this.ui.new-station-genre.value
+            name: this.ui.newStationName.value,
+            url: this.ui.newStationUrl.value,
+            logo: this.ui.newStationLogo.value,
+            genre: this.ui.newStationGenre.value
         };
         this.stations.push(newStation);
         this.saveStations();
         this.renderStationList();
-        this.ui.add-station-form.reset();
+        this.ui.addStationForm.reset();
         this.hideAllModals();
     }
 
@@ -153,7 +156,7 @@ class RadioWave {
         const lowerQuery = query.toLowerCase();
         const filtered = this.stations.filter(s => s.name.toLowerCase().includes(lowerQuery));
         // A bit of a hack, but re-rendering the whole list is easiest
-        this.ui.station-list.innerHTML = '';
+        this.ui.stationList.innerHTML = '';
         filtered.forEach(station => {
             const index = this.stations.indexOf(station);
             const li = document.createElement('li');
@@ -163,7 +166,7 @@ class RadioWave {
                 <img src="${station.logo || 'https://picsum.photos/seed/'+station.name+'/40'}" alt="${station.name}">
                 <span>${station.name}</span>
             `;
-            this.ui.station-list.appendChild(li);
+            this.ui.stationList.appendChild(li);
         });
     }
 
@@ -177,9 +180,9 @@ class RadioWave {
         this.audio.src = station.url;
         this.togglePlayPause(true);
 
-        this.ui.station-logo.src = station.logo || `https://picsum.photos/seed/${station.name}/600`;
-        this.ui.station-name.textContent = station.name;
-        this.ui.station-genre.textContent = station.genre || 'Radio';
+        this.ui.stationLogo.src = station.logo || `https://picsum.photos/seed/${station.name}/600`;
+        this.ui.stationName.textContent = station.name;
+        this.ui.stationGenre.textContent = station.genre || 'Radio';
         
         this.renderStationList(); // To update active state
         this.updateAIRecommendations(station.genre);
@@ -195,11 +198,11 @@ class RadioWave {
 
         if (shouldPlay) {
             this.audio.play().catch(e => console.error("Playback failed:", e));
-            this.ui.play-pause-button.innerHTML = '<i class="fas fa-pause"></i>';
+            this.ui.playPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
             this.setupAudioVisualizer();
         } else {
             this.audio.pause();
-            this.ui.play-pause-button.innerHTML = '<i class="fas fa-play"></i>';
+            this.ui.playPauseButton.innerHTML = '<i class="fas fa-play"></i>';
         }
     }
 
@@ -280,7 +283,7 @@ class RadioWave {
 
     initEqualizer() {
         const frequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
-        this.ui.eq-bands-container.innerHTML = '';
+        this.ui.eqBandsContainer.innerHTML = '';
         frequencies.forEach((freq, i) => {
             const band = document.createElement('div');
             band.className = 'eq-band';
@@ -288,22 +291,22 @@ class RadioWave {
                 <input type="range" min="-12" max="12" step="0.1" value="0" data-index="${i}">
                 <label>${freq < 1000 ? freq : (freq/1000)+'k'} Hz</label>
             `;
-            this.ui.eq-bands-container.appendChild(band);
+            this.ui.eqBandsContainer.appendChild(band);
         });
 
-        this.ui.eq-bands-container.addEventListener('input', (e) => {
+        this.ui.eqBandsContainer.addEventListener('input', (e) => {
             if (e.target.type === 'range') {
                 const index = e.target.dataset.index;
                 const value = e.target.value;
                 if (this.eqBands[index]) {
                     this.eqBands[index].gain.value = value;
                 }
-                this.ui.eq-preset-select.value = 'custom';
+                this.ui.eqPresetSelect.value = 'custom';
             }
         });
 
-        this.ui.eq-preset-select.addEventListener('change', (e) => this.applyEQPreset(e.target.value));
-        this.ui.eq-reset-button.addEventListener('click', () => this.applyEQPreset('flat'));
+        this.ui.eqPresetSelect.addEventListener('change', (e) => this.applyEQPreset(e.target.value));
+        this.ui.eqResetButton.addEventListener('click', () => this.applyEQPreset('flat'));
     }
 
     applyEQPreset(preset) {
@@ -317,13 +320,13 @@ class RadioWave {
         const values = presets[preset];
         if (!values) return;
 
-        this.ui.eq-bands-container.querySelectorAll('input[type=range]').forEach((slider, i) => {
+        this.ui.eqBandsContainer.querySelectorAll('input[type=range]').forEach((slider, i) => {
             slider.value = values[i];
             if (this.eqBands[i]) {
                 this.eqBands[i].gain.value = values[i];
             }
         });
-        this.ui.eq-preset-select.value = preset;
+        this.ui.eqPresetSelect.value = preset;
     }
 
     toggleRecording() {
@@ -335,7 +338,7 @@ class RadioWave {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             // Stop recording
             this.mediaRecorder.stop();
-            this.ui.record-button.classList.remove('recording');
+            this.ui.recordButton.classList.remove('recording');
         } else {
             // Start recording
             const destination = this.audioContext.createMediaStreamDestination();
@@ -360,7 +363,7 @@ class RadioWave {
             };
 
             this.mediaRecorder.start();
-            this.ui.record-button.classList.add('recording');
+            this.ui.recordButton.classList.add('recording');
         }
     }
 
@@ -375,7 +378,7 @@ class RadioWave {
 
     applyAccentColor(color) {
         document.documentElement.style.setProperty('--primary-color', color);
-        this.ui.color-picker.value = color;
+        this.ui.colorPicker.value = color;
         localStorage.setItem('accentColor', color);
     }
 
@@ -418,15 +421,15 @@ class RadioWave {
         if (minutes > 0) {
             this.sleepTimer = setTimeout(() => {
                 this.togglePlayPause(false); // Pause the player
-                this.ui.sleep-timer-select.value = 0;
+                this.ui.sleepTimerSelect.value = 0;
             }, minutes * 60 * 1000);
         }
     }
 
     // UI Helpers
-    showModal(modalId) {
+    showModal(modalElement) {
         this.hideAllModals();
-        this.ui[modalId].classList.add('show');
+        modalElement.classList.add('show');
     }
 
     hideAllModals() {
@@ -448,18 +451,18 @@ class RadioWave {
         ['Pop', 'Rock', 'Jazz', 'Electronic', 'Classical', 'Hip-Hop'].forEach(g => {
             if (!genres.includes(g)) genres.push(g);
         });
-        this.ui.genre-list.innerHTML = '';
+        this.ui.genreList.innerHTML = '';
         genres.sort().forEach(genre => {
             const li = document.createElement('li');
             li.textContent = genre;
             li.addEventListener('click', () => this.filterStationsByGenre(genre));
-            this.ui.genre-list.appendChild(li);
+            this.ui.genreList.appendChild(li);
         });
     }
 
     filterStationsByGenre(genre) {
         this.switchTab('my-stations-tab');
-        this.ui.search-input.value = genre;
+        this.ui.searchInput.value = genre;
         this.filterStations(genre);
     }
 
@@ -470,7 +473,7 @@ class RadioWave {
             { name: "Classical FM", url: "http://media-ice.musicradio.com/ClassicFMMP3", logo: "https://cdn-radiotime-logos.tunein.com/s25365q.png", genre: "Classical" },
             { name: "Radio Paradise", url: "http://stream.radioparadise.com/flacm", logo: "https://i.radioparadise.com/img/logo-circle-250.png", genre: "Eclectic" },
         ];
-        this.ui.discover-list.innerHTML = '';
+        this.ui.discoverList.innerHTML = '';
         discover.forEach(station => {
             const li = document.createElement('li');
             li.innerHTML = `
@@ -485,29 +488,29 @@ class RadioWave {
                 this.renderStationList();
                 alert(`${station.name} added to your stations!`);
             });
-            this.ui.discover-list.appendChild(li);
+            this.ui.discoverList.appendChild(li);
         });
     }
 
     updateAIRecommendations(genre) {
         if (!genre) {
-            this.ui.ai-recommendations.style.display = 'none';
+            this.ui.aiRecommendations.style.display = 'none';
             return;
         }
         // Dummy recommendation logic
         const recommendations = this.stations.filter(s => s.genre === genre && s.name !== this.stations[this.currentStationIndex].name);
         if (recommendations.length > 0) {
-            this.ui.recommendations-container.innerHTML = '';
+            this.ui.recommendationsContainer.innerHTML = '';
             recommendations.slice(0, 2).forEach(station => {
                 const div = document.createElement('div');
                 div.className = 'rec-item';
                 div.innerHTML = `<span>Based on ${genre}, try: <b>${station.name}</b></span>`;
                 div.addEventListener('click', () => this.playStation(this.stations.indexOf(station)));
-                this.ui.recommendations-container.appendChild(div);
+                this.ui.recommendationsContainer.appendChild(div);
             });
-            this.ui.ai-recommendations.style.display = 'block';
+            this.ui.aiRecommendations.style.display = 'block';
         } else {
-            this.ui.ai-recommendations.style.display = 'none';
+            this.ui.aiRecommendations.style.display = 'none';
         }
     }
 
@@ -528,13 +531,13 @@ class RadioWave {
                 break;
             case 'ArrowUp':
                 e.preventDefault();
-                this.ui.volume-slider.value = Math.min(1, this.audio.volume + 0.05);
-                this.setVolume(this.ui.volume-slider.value);
+                this.ui.volumeSlider.value = Math.min(1, this.audio.volume + 0.05);
+                this.setVolume(this.ui.volumeSlider.value);
                 break;
             case 'ArrowDown':
                 e.preventDefault();
-                this.ui.volume-slider.value = Math.max(0, this.audio.volume - 0.05);
-                this.setVolume(this.ui.volume-slider.value);
+                this.ui.volumeSlider.value = Math.max(0, this.audio.volume - 0.05);
+                this.setVolume(this.ui.volumeSlider.value);
                 break;
         }
     }
