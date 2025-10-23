@@ -4,195 +4,148 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radio Wave</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <meta name="description" content="Radio Wave - The ultimate web radio experience.">
+    <meta name="robots" content="noindex, nofollow">
 </head>
-<body>
+<body class="dark-theme">
+
     <div id="app-container">
-        <!-- Sidebar with station lists -->
-        <div id="sidebar">
-            <div id="sidebar-header">
+        <!-- Header -->
+        <header id="main-header">
+            <div class="logo">
+                <i class="fas fa-broadcast-tower"></i>
                 <h1>Radio Wave</h1>
-                <div class="theme-switcher">
-                    <i class="fas fa-sun"></i>
-                    <label class="switch">
-                        <input type="checkbox" id="theme-toggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <i class="fas fa-moon"></i>
-                </div>
             </div>
-            <div id="sidebar-tabs">
-                <button class="tab-link active" data-tab="my-stations-tab">My Stations</button>
-                <button class="tab-link" data-tab="discover-tab">Discover</button>
+            <div class="header-controls">
+                <button id="theme-switcher" class="control-button"><i class="fas fa-sun"></i></button>
+                <button id="equalizer-button" class="control-button"><i class="fas fa-sliders-h"></i></button>
+                <button id="settings-button" class="control-button"><i class="fas fa-cog"></i></button>
             </div>
+        </header>
 
-            <!-- My Stations Tab -->
-            <div id="my-stations-tab" class="tab-content active">
-                <div class="toolbar">
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="search-input" placeholder="Search stations...">
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Left Column: Player -->
+            <div id="player-column">
+                <div id="now-playing-card">
+                    <div id="album-art-container">
+                        <img src="https://picsum.photos/seed/radiowave/600" alt="Album Art" id="station-logo">
+                        <canvas id="visualizer"></canvas>
                     </div>
-                    <div class="filter-bar">
-                        <select id="genre-filter">
-                            <option value="all">All Genres</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="station-list">
-                    <!-- Stations will be dynamically loaded here -->
-                </div>
-                <button id="add-station-btn" class="sidebar-btn"><i class="fas fa-plus"></i> Add New Station</button>
-            </div>
-
-            <!-- Discover Tab -->
-            <div id="discover-tab" class="tab-content">
-                <div class="toolbar">
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="discover-search-input" placeholder="Search global library...">
-                    </div>
-                </div>
-                <div id="discover-list">
-                    <!-- Global stations will be loaded here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Main content with player and visualizer -->
-        <div id="main-content">
-            <div id="visualizer-container">
-                <canvas id="visualizer"></canvas>
-            </div>
-            <div id="player-container">
-                <div id="now-playing">
-                    <img id="station-art" src="assets/images/default-art.png" alt="Station Art">
                     <div id="station-info">
-                        <h2 id="player-station-name">Select a Station</h2>
-                        <p id="player-station-genre">---</p>
+                        <h2 id="station-name">Select a Station</h2>
+                        <p id="station-genre">Welcome to Radio Wave</p>
+                        <p id="live-indicator"><span class="dot"></span> Live</p>
                     </div>
                 </div>
-                <div id="player-controls">
-                    <button id="prev-station-btn" title="Previous Station"><i class="fas fa-backward"></i></button>
-                    <button id="play-pause-btn" class="play-btn" title="Play/Pause"><i class="fas fa-play"></i></button>
-                    <button id="next-station-btn" title="Next Station"><i class="fas fa-forward"></i></button>
-                    <button id="record-btn" title="Start Recording"><i class="fas fa-circle"></i></button>
-                </div>
-                <div class="volume-control">
-                    <i class="fas fa-volume-down"></i>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-                    <i class="fas fa-volume-up"></i>
-                </div>
-            </div>
-            <div id="recommendations-container">
-                <h3>You might also like...</h3>
-                <div id="recommendations-list">
-                    <!-- AI recommendations will appear here -->
-                </div>
-            </div>
-        </div>
 
-        <!-- App-wide controls -->
-        <div id="app-controls">
-            <button id="settings-btn" title="Settings"><i class="fas fa-cog"></i></button>
-            <button id="equalizer-btn" title="Equalizer"><i class="fas fa-sliders-h"></i></button>
-            <button id="sleep-timer-btn" title="Sleep Timer"><i class="fas fa-clock"></i></button>
-            <button id="import-export-btn" title="Import/Export"><i class="fas fa-file-import"></i></button>
-        </div>
+                <div id="player-controls">
+                    <button id="prev-station" class="control-button"><i class="fas fa-backward"></i></button>
+                    <button id="play-pause-button" class="control-button main-button">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="next-station" class="control-button"><i class="fas fa-forward"></i></button>
+                </div>
+
+                <div id="volume-and-more">
+                     <div id="volume-control">
+                        <i class="fas fa-volume-down"></i>
+                        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+                        <i class="fas fa-volume-up"></i>
+                    </div>
+                    <button id="record-button" class="control-button"><i class="fas fa-circle"></i></button>
+                </div>
+            </div>
+
+            <!-- Right Column: Stations -->
+            <div id="stations-column">
+                <div class="tabs">
+                    <button class="tab-link active" data-tab="my-stations-tab">My Stations</button>
+                    <button class="tab-link" data-tab="discover-tab">Discover</button>
+                    <button class="tab-link" data-tab="genres-tab">Genres</button>
+                </div>
+
+                <div id="my-stations-tab" class="tab-content active">
+                    <div class="station-list-header">
+                        <input type="text" id="search-input" placeholder="Search your stations...">
+                        <button id="add-station-button" class="control-button"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <ul id="station-list">
+                        <!-- Stations will be dynamically added here -->
+                    </ul>
+                </div>
+
+                <div id="discover-tab" class="tab-content">
+                     <div id="ai-recommendations">
+                        <h3>Recommended For You</h3>
+                        <div id="recommendations-container"></div>
+                    </div>
+                    <h3>Global Stations</h3>
+                    <ul id="discover-list">
+                       <!-- Discover stations will be added here -->
+                    </ul>
+                </div>
+                 <div id="genres-tab" class="tab-content">
+                    <ul id="genre-list">
+                        <!-- Genres will be dynamically added here -->
+                    </ul>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- Modals -->
-    <!-- Add/Edit Station Modal -->
-    <div id="station-modal" class="modal">
+    <div id="settings-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2 id="modal-title">Add Station</h2>
-            <form id="station-form">
-                <input type="hidden" id="station-id">
-                <label for="station-name">Name:</label>
-                <input type="text" id="station-name" required>
-                <label for="station-url">Stream URL:</label>
-                <input type="url" id="station-url" required>
-                <label for="station-genre">Genre:</label>
-                <input type="text" id="station-genre" placeholder="e.g., Rock, Pop, News">
-                <button type="submit" id="save-station-btn">Save Station</button>
+            <span class="close-button">&times;</span>
+            <h2>Settings</h2>
+            <div class="setting-item">
+                <label for="color-picker">Accent Color:</label>
+                <input type="color" id="color-picker" value="#FF8C00">
+            </div>
+            <div class="setting-item">
+                <label for="sleep-timer-select">Sleep Timer:</label>
+                <select id="sleep-timer-select">
+                    <option value="0">Off</option>
+                    <option value="15">15 Minutes</option>
+                    <option value="30">30 Minutes</option>
+                    <option value="60">1 Hour</option>
+                </select>
+            </div>
+             <div class="setting-item">
+                <h3><i class="fas fa-cogs"></i> Manage Data</h3>
+                <div class="data-buttons">
+                    <button id="import-button" class="control-button"><i class="fas fa-upload"></i> Import Stations</button>
+                    <button id="export-button" class="control-button"><i class="fas fa-download"></i> Export Stations</button>
+                </div>
+                <input type="file" id="import-file-input" style="display: none;" accept=".json">
+            </div>
+        </div>
+    </div>
+
+    <div id="add-station-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Add New Station</h2>
+            <form id="add-station-form">
+                <input type="text" id="new-station-name" placeholder="Station Name" required>
+                <input type="url" id="new-station-url" placeholder="Stream URL" required>
+                <input type="url" id="new-station-logo" placeholder="Logo URL (Optional)">
+                <input type="text" id="new-station-genre" placeholder="Genre (Optional)">
+                <button type="submit" class="control-button">Save Station</button>
             </form>
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Settings</h2>
-            <div class="color-picker-section">
-                <h3>Customize Colors</h3>
-                <div class="color-input">
-                    <label for="primary-color">Primary:</label>
-                    <input type="color" id="primary-color" value="#3498db">
-                </div>
-                <div class="color-input">
-                    <label for="accent-color">Accent:</label>
-                    <input type="color" id="accent-color" value="#2ecc71">
-                </div>
-                <div class="color-input">
-                    <label for="text-color-light">Text (Light):</label>
-                    <input type="color" id="text-color-light" value="#2c3e50">
-                </div>
-                 <div class="color-input">
-                    <label for="text-color-dark">Text (Dark):</label>
-                    <input type="color" id="text-color-dark" value="#ecf0f1">
-                </div>
-                <button id="reset-colors-btn">Reset to Default</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sleep Timer Modal -->
-    <div id="sleep-timer-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Sleep Timer</h2>
-            <p>Stop playback after:</p>
-            <div id="timer-options">
-                <button class="timer-option" data-minutes="15">15 min</button>
-                <button class="timer-option" data-minutes="30">30 min</button>
-                <button class="timer-option" data-minutes="60">60 min</button>
-            </div>
-            <p id="timer-display">Timer not set</p>
-            <button id="cancel-timer-btn">Cancel Timer</button>
-        </div>
-    </div>
-
-    <!-- Import/Export Modal -->
-    <div id="import-export-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Import / Export</h2>
-            <div class="import-section">
-                <h3>Import Stations</h3>
-                <p>Load stations from a `.json` file.</p>
-                <input type="file" id="import-file-input" accept=".json">
-                <button id="import-btn">Import</button>
-            </div>
-            <div class="export-section">
-                <h3>Export Stations</h3>
-                <p>Save your current station list to a file.</p>
-                <button id="export-btn">Export</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Equalizer Modal -->
     <div id="equalizer-modal" class="modal">
         <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h2>Graphic Equalizer</h2>
+            <span class="close-button">&times;</span>
+            <h2>10-Band Graphic Equalizer</h2>
             <div id="equalizer-controls">
                 <div class="eq-presets">
-                    <label for="eq-presets-select">Presets:</label>
-                    <select id="eq-presets-select">
+                    <select id="eq-preset-select">
                         <option value="custom">Custom</option>
                         <option value="flat">Flat</option>
                         <option value="bass-boost">Bass Boost</option>
@@ -200,16 +153,15 @@
                         <option value="pop">Pop</option>
                         <option value="vocal-booster">Vocal Booster</option>
                     </select>
+                    <button id="eq-reset-button" class="control-button">Reset</button>
                 </div>
-                <div id="eq-bands">
-                    <!-- EQ sliders will be generated by JS -->
+                <div id="eq-bands-container">
+                    <!-- EQ bands will be generated by JS -->
                 </div>
-                <button id="reset-eq-btn">Reset EQ</button>
             </div>
         </div>
     </div>
 
-    <audio id="audio-player" crossOrigin="anonymous"></audio>
     <script src="assets/js/main.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

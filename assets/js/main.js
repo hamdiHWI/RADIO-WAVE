@@ -1,275 +1,215 @@
-class RadioWaveApp {
+document.addEventListener('DOMContentLoaded', () => {
+    const app = new RadioWave();
+    app.init();
+});
+
+class RadioWave {
     constructor() {
-        this.audio = document.getElementById('audio-player');
         this.stations = [];
         this.currentStationIndex = -1;
-        this.discoverStations = this.getDiscoverStations();
+        this.audio = new Audio();
+        this.audio.crossOrigin = 'anonymous';
+        this.isPlaying = false;
         this.audioContext = null;
         this.analyser = null;
-        this.source = null;
-        this.sleepTimer = null;
+        this.eqBands = [];
         this.mediaRecorder = null;
         this.recordedChunks = [];
-        this.eqBands = [];
+        this.sleepTimer = null;
 
-        this.loadStations();
-        this.loadTheme();
-        this.loadColors();
+        this.ui = {}; // To cache UI elements
+    }
+
+    init() {
         this.initUI();
+        this.loadStations();
         this.bindEvents();
-        this.renderStations();
-        this.renderDiscoverStations();
+        this.applyAccentColor(localStorage.getItem('accentColor') || '#FF8C00');
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.replace('dark-theme', 'light-theme');
+            this.ui.themeSwitcher.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+        this.populateGenres();
+        this.populateDiscoverStations();
     }
 
     initUI() {
-        // Cache all UI elements
-        this.ui = {
-            stationList: document.getElementById('station-list'),
-            discoverList: document.getElementById('discover-list'),
-            playPauseBtn: document.getElementById('play-pause-btn'),
-            nextBtn: document.getElementById('next-station-btn'),
-            prevBtn: document.getElementById('prev-station-btn'),
-            recordBtn: document.getElementById('record-btn'),
-            volumeSlider: document.getElementById('volume-slider'),
-            playerStationName: document.getElementById('player-station-name'),
-            playerStationGenre: document.getElementById('player-station-genre'),
-            stationArt: document.getElementById('station-art'),
-            searchInput: document.getElementById('search-input'),
-            genreFilter: document.getElementById('genre-filter'),
-            themeToggle: document.getElementById('theme-toggle'),
-            visualizer: document.getElementById('visualizer'),
-            // Modals
-            stationModal: document.getElementById('station-modal'),
-            settingsModal: document.getElementById('settings-modal'),
-            sleepTimerModal: document.getElementById('sleep-timer-modal'),
-            importExportModal: document.getElementById('import-export-modal'),
-            equalizerModal: document.getElementById('equalizer-modal'),
-            // Modal Triggers
-            addStationBtn: document.getElementById('add-station-btn'),
-            settingsBtn: document.getElementById('settings-btn'),
-            sleepTimerBtn: document.getElementById('sleep-timer-btn'),
-            importExportBtn: document.getElementById('import-export-btn'),
-            equalizerBtn: document.getElementById('equalizer-btn'),
-            // Tabs
-            sidebarTabs: document.querySelectorAll('.tab-link'),
-            tabContents: document.querySelectorAll('.tab-content'),
-            // Recommendations
-            recommendationsList: document.getElementById('recommendations-list'),
-            // EQ
-            eqBandsContainer: document.getElementById('eq-bands'),
-            eqPresetsSelect: document.getElementById('eq-presets-select'),
-            resetEqBtn: document.getElementById('reset-eq-btn'),
-        };
-
-        this.canvasCtx = this.ui.visualizer.getContext('2d');
+        const ids = [
+            'app-container', 'main-header', 'theme-switcher', 'equalizer-button', 'settings-button',
+            'main-content', 'player-column', 'now-playing-card', 'album-art-container', 'station-logo',
+            'visualizer', 'station-info', 'station-name', 'station-genre', 'live-indicator',
+            'player-controls', 'prev-station', 'play-pause-button', 'next-station', 'volume-and-more',
+            'volume-control', 'volume-slider', 'record-button', 'stations-column', 'tabs',
+            'my-stations-tab', 'discover-tab', 'genres-tab', 'station-list-header', 'search-input',
+            'add-station-button', 'station-list', 'ai-recommendations', 'recommendations-container',
+            'discover-list', 'genre-list', 'settings-modal', 'color-picker', 'sleep-timer-select',
+            'import-button', 'export-button', 'import-file-input', 'add-station-modal', 'add-station-form',
+            'new-station-name', 'new-station-url', 'new-station-logo', 'new-station-genre',
+            'equalizer-modal', 'equalizer-controls', 'eq-preset-select', 'eq-reset-button', 'eq-bands-container'
+        ];
+        ids.forEach(id => this.ui[id] = document.getElementById(id));
+        
+        this.ui.modalCloseButtons = document.querySelectorAll('.modal .close-button');
+        this.ui.tabLinks = document.querySelectorAll('.tab-link');
     }
 
     bindEvents() {
-        // Player controls
-        this.ui.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
-        this.ui.nextBtn.addEventListener('click', () => this.playNext());
-        this.ui.prevBtn.addEventListener('click', () => this.playPrevious());
-        this.ui.recordBtn.addEventListener('click', () => this.toggleRecording());
-        this.ui.volumeSlider.addEventListener('input', (e) => this.setVolume(e.target.value));
+        this.ui.play-pause-button.addEventListener('click', () => this.togglePlayPause());
+        this.ui.next-station.addEventListener('click', () => this.playNextStation());
+        this.ui.prev-station.addEventListener('click', () => this.playPreviousStation());
+        this.ui.volume-slider.addEventListener('input', (e) => this.setVolume(e.target.value));
+        this.ui.station-list.addEventListener('click', (e) => this.handleStationClick(e));
+        this.ui.search-input.addEventListener('input', (e) => this.filterStations(e.target.value));
+        this.ui.theme-switcher.addEventListener('click', () => this.toggleTheme());
 
-        // Station list interactions
-        this.ui.stationList.addEventListener('click', (e) => this.handleStationListClick(e));
-        this.ui.discoverList.addEventListener('click', (e) => this.handleDiscoverListClick(e));
+        // Modals
+        this.ui.settings-button.addEventListener('click', () => this.showModal('settings-modal'));
+        this.ui.add-station-button.addEventListener('click', () => this.showModal('add-station-modal'));
+        this.ui.equalizer-button.addEventListener('click', () => this.showModal('equalizer-modal'));
+        this.ui.modalCloseButtons.forEach(btn => btn.addEventListener('click', () => this.hideAllModals()));
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) this.hideAllModals();
+        });
 
-        // Search and filter
-        this.ui.searchInput.addEventListener('input', (e) => this.renderStations(e.target.value, this.ui.genreFilter.value));
-        this.ui.genreFilter.addEventListener('change', (e) => this.renderStations(this.ui.searchInput.value, e.target.value));
+        // Settings
+        this.ui.color-picker.addEventListener('input', (e) => this.applyAccentColor(e.target.value));
+        this.ui.sleep-timer-select.addEventListener('change', (e) => this.setSleepTimer(e.target.value));
+        this.ui.import-button.addEventListener('click', () => this.ui.import-file-input.click());
+        this.ui.import-file-input.addEventListener('change', (e) => this.importStations(e));
+        this.ui.export-button.addEventListener('click', () => this.exportStations());
 
-        // Theme and settings
-        this.ui.themeToggle.addEventListener('change', () => this.toggleTheme());
-        this.bindModalEvents();
-        this.bindColorPickerEvents();
-        this.bindTimerEvents();
-        this.bindImportExportEvents();
-        this.bindEqualizerEvents();
+        // Add Station Form
+        this.ui.add-station-form.addEventListener('submit', (e) => this.addStation(e));
 
         // Tabs
-        this.ui.sidebarTabs.forEach(tab => {
-            tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
+        this.ui.tabLinks.forEach(link => {
+            link.addEventListener('click', () => this.switchTab(link.dataset.tab));
         });
-        
-        // Audio events
-        this.audio.addEventListener('play', () => this.ui.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>');
-        this.audio.addEventListener('pause', () => this.ui.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>');
+
+        // Audio Lifecycle
+        this.audio.addEventListener('playing', () => this.isPlaying = true);
+        this.audio.addEventListener('pause', () => this.isPlaying = false);
+
+        // Equalizer & Recorder
+        this.ui.record-button.addEventListener('click', () => this.toggleRecording());
+        this.initEqualizer();
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeyPress(e));
     }
 
-    bindModalEvents() {
-        const modals = document.querySelectorAll('.modal');
-        const closeBtns = document.querySelectorAll('.close-btn');
-
-        this.ui.addStationBtn.addEventListener('click', () => this.openStationModal());
-        this.ui.settingsBtn.addEventListener('click', () => this.ui.settingsModal.classList.add('active'));
-        this.ui.equalizerBtn.addEventListener('click', () => this.ui.equalizerModal.classList.add('active'));
-        this.ui.sleepTimerBtn.addEventListener('click', () => this.ui.sleepTimerModal.classList.add('active'));
-        this.ui.importExportBtn.addEventListener('click', () => this.ui.importExportModal.classList.add('active'));
-
-        closeBtns.forEach(btn => btn.addEventListener('click', () => this.closeAllModals()));
-        modals.forEach(modal => modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeAllModals();
-        }));
-
-        document.getElementById('station-form').addEventListener('submit', (e) => this.saveStation(e));
-    }
-    
-    closeAllModals() {
-        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
-    }
-
-    /* --- Station Management --- */
-
+    // Station Management
     loadStations() {
-        const savedStations = localStorage.getItem('radioWaveStations');
-        this.stations = savedStations ? JSON.parse(savedStations) : this.getDefaultStations();
-        this.updateGenreFilter();
+        const savedStations = localStorage.getItem('stations');
+        this.stations = savedStations ? JSON.parse(savedStations) : [
+            { name: "Lofi Girl", url: "https://play.streamafrica.net/lofiradio", logo: "https://i.ytimg.com/vi/jfKfPfyJRdk/maxresdefault.jpg", genre: "Lofi" },
+            { name: "Classic Rock", url: "http://198.178.123.23:8722/stream", logo: "https://cdn-radiotime-logos.tunein.com/s292341q.png", genre: "Rock" },
+        ];
+        this.renderStationList();
     }
 
     saveStations() {
-        localStorage.setItem('radioWaveStations', JSON.stringify(this.stations));
-        this.updateGenreFilter();
-        this.renderStations();
+        localStorage.setItem('stations', JSON.stringify(this.stations));
     }
 
-    renderStations(searchTerm = '', genreTerm = 'all') {
-        this.ui.stationList.innerHTML = '';
-        const filteredStations = this.stations.filter(station => {
-            const matchesSearch = station.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesGenre = genreTerm === 'all' || station.genre.toLowerCase() === genreTerm.toLowerCase();
-            return matchesSearch && matchesGenre;
+    renderStationList() {
+        this.ui.station-list.innerHTML = '';
+        this.stations.forEach((station, index) => {
+            const li = document.createElement('li');
+            li.dataset.index = index;
+            li.className = (index === this.currentStationIndex) ? 'active' : '';
+            li.innerHTML = `
+                <img src="${station.logo || 'https://picsum.photos/seed/'+station.name+'/40'}" alt="${station.name}">
+                <span>${station.name}</span>
+            `;
+            this.ui.station-list.appendChild(li);
         });
+    }
 
-        if (filteredStations.length === 0) {
-            this.ui.stationList.innerHTML = '<p style="text-align:center; opacity: 0.7;">No stations found.</p>';
+    addStation(e) {
+        e.preventDefault();
+        const newStation = {
+            name: this.ui.new-station-name.value,
+            url: this.ui.new-station-url.value,
+            logo: this.ui.new-station-logo.value,
+            genre: this.ui.new-station-genre.value
+        };
+        this.stations.push(newStation);
+        this.saveStations();
+        this.renderStationList();
+        this.ui.add-station-form.reset();
+        this.hideAllModals();
+    }
+
+    handleStationClick(e) {
+        const li = e.target.closest('li');
+        if (li) {
+            const index = parseInt(li.dataset.index, 10);
+            this.playStation(index);
+        }
+    }
+
+    filterStations(query) {
+        const lowerQuery = query.toLowerCase();
+        const filtered = this.stations.filter(s => s.name.toLowerCase().includes(lowerQuery));
+        // A bit of a hack, but re-rendering the whole list is easiest
+        this.ui.station-list.innerHTML = '';
+        filtered.forEach(station => {
+            const index = this.stations.indexOf(station);
+            const li = document.createElement('li');
+            li.dataset.index = index;
+            li.className = (index === this.currentStationIndex) ? 'active' : '';
+            li.innerHTML = `
+                <img src="${station.logo || 'https://picsum.photos/seed/'+station.name+'/40'}" alt="${station.name}">
+                <span>${station.name}</span>
+            `;
+            this.ui.station-list.appendChild(li);
+        });
+    }
+
+    // Player Logic
+    playStation(index) {
+        if (index < 0 || index >= this.stations.length) return;
+
+        this.currentStationIndex = index;
+        const station = this.stations[index];
+
+        this.audio.src = station.url;
+        this.togglePlayPause(true);
+
+        this.ui.station-logo.src = station.logo || `https://picsum.photos/seed/${station.name}/600`;
+        this.ui.station-name.textContent = station.name;
+        this.ui.station-genre.textContent = station.genre || 'Radio';
+        
+        this.renderStationList(); // To update active state
+        this.updateAIRecommendations(station.genre);
+    }
+
+    togglePlayPause(forcePlay = null) {
+        if (this.currentStationIndex === -1) {
+            if (this.stations.length > 0) this.playStation(0);
             return;
         }
 
-        filteredStations.forEach((station, index) => {
-            const isPlaying = this.currentStationIndex === this.stations.indexOf(station) && !this.audio.paused;
-            const item = document.createElement('div');
-            item.className = `station-item ${isPlaying ? 'playing' : ''}`;
-            item.dataset.id = station.id;
+        const shouldPlay = forcePlay !== null ? forcePlay : this.audio.paused;
 
-            item.innerHTML = `
-                <div class="station-item-info">
-                    <h3>${station.name}</h3>
-                    <p>${station.genre || 'No Genre'}</p>
-                </div>
-                <div class="station-item-controls">
-                    <button class="edit-btn"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="delete-btn"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            this.ui.stationList.appendChild(item);
-        });
-    }
-
-    handleStationListClick(e) {
-        const stationItem = e.target.closest('.station-item');
-        if (!stationItem) return;
-
-        const stationId = stationItem.dataset.id;
-        const stationIndex = this.stations.findIndex(s => s.id == stationId);
-
-        if (e.target.closest('.edit-btn')) {
-            this.openStationModal(stationId);
-        } else if (e.target.closest('.delete-btn')) {
-            if (confirm('Are you sure you want to delete this station?')) {
-                this.stations.splice(stationIndex, 1);
-                this.saveStations();
-            }
-        } else {
-            this.playStation(stationIndex);
-        }
-    }
-
-    openStationModal(stationId = null) {
-        const form = document.getElementById('station-form');
-        const modalTitle = document.getElementById('modal-title');
-        form.reset();
-        document.getElementById('station-id').value = '';
-
-        if (stationId) {
-            const station = this.stations.find(s => s.id == stationId);
-            modalTitle.textContent = 'Edit Station';
-            document.getElementById('station-id').value = station.id;
-            document.getElementById('station-name').value = station.name;
-            document.getElementById('station-url').value = station.url;
-            document.getElementById('station-genre').value = station.genre;
-        } else {
-            modalTitle.textContent = 'Add Station';
-        }
-        this.ui.stationModal.classList.add('active');
-    }
-
-    saveStation(e) {
-        e.preventDefault();
-        const id = document.getElementById('station-id').value;
-        const newStation = {
-            id: id || Date.now(),
-            name: document.getElementById('station-name').value,
-            url: document.getElementById('station-url').value,
-            genre: document.getElementById('station-genre').value,
-        };
-
-        if (id) {
-            const index = this.stations.findIndex(s => s.id == id);
-            this.stations[index] = newStation;
-        } else {
-            this.stations.push(newStation);
-        }
-        this.saveStations();
-        this.closeAllModals();
-    }
-
-    updateGenreFilter() {
-        const genres = ['all', ...new Set(this.stations.map(s => s.genre).filter(g => g))];
-        this.ui.genreFilter.innerHTML = genres.map(g => `<option value="${g}">${g.charAt(0).toUpperCase() + g.slice(1)}</option>`).join('');
-    }
-
-    /* --- Player --- */
-
-    playStation(index) {
-        if (index < 0 || index >= this.stations.length) return;
-        this.currentStationIndex = index;
-        const station = this.stations[index];
-        this.audio.src = station.url;
-        this.audio.play().catch(e => {
-            alert("Failed to play station. The stream might be offline or blocked.");
-            console.error("Playback Error:", e);
-        });
-        this.updatePlayerUI(station);
-        this.renderStations();
-        this.setupAudioPipeline();
-        this.updateRecommendations();
-    }
-
-    togglePlayPause() {
-        if (this.audio.paused) {
-            if (this.currentStationIndex === -1 && this.stations.length > 0) {
-                this.playStation(0);
-            } else {
-                this.audio.play();
-            }
+        if (shouldPlay) {
+            this.audio.play().catch(e => console.error("Playback failed:", e));
+            this.ui.play-pause-button.innerHTML = '<i class="fas fa-pause"></i>';
+            this.setupAudioVisualizer();
         } else {
             this.audio.pause();
+            this.ui.play-pause-button.innerHTML = '<i class="fas fa-play"></i>';
         }
-        this.renderStations();
     }
 
-    playNext() {
+    playNextStation() {
         let nextIndex = this.currentStationIndex + 1;
         if (nextIndex >= this.stations.length) nextIndex = 0;
         this.playStation(nextIndex);
     }
 
-    playPrevious() {
+    playPreviousStation() {
         let prevIndex = this.currentStationIndex - 1;
         if (prevIndex < 0) prevIndex = this.stations.length - 1;
         this.playStation(prevIndex);
@@ -279,39 +219,33 @@ class RadioWaveApp {
         this.audio.volume = value;
     }
 
-    updatePlayerUI(station) {
-        this.ui.playerStationName.textContent = station.name;
-        this.ui.playerStationGenre.textContent = station.genre || '---';
-        this.ui.stationArt.src = 'assets/images/default-art.png';
-    }
+    // Audio Features
+    setupAudioVisualizer() {
+        if (this.audioContext) return;
 
-    /* --- Audio Pipeline (Visualizer & EQ) --- */
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.audioContext.createMediaElementSource(this.audio);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 256;
 
-    setupAudioPipeline() {
-        if (this.audioContext) return; // Already set up
-        try {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            this.source = this.audioContext.createMediaElementSource(this.audio);
-            this.analyser = this.audioContext.createAnalyser();
-            this.analyser.fftSize = 256;
+        // EQ setup
+        const frequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
+        let lastNode = source;
+        frequencies.forEach((freq, i) => {
+            const eq = this.audioContext.createBiquadFilter();
+            eq.type = 'peaking';
+            eq.frequency.value = freq;
+            eq.Q.value = 1.5;
+            eq.gain.value = 0;
+            lastNode.connect(eq);
+            lastNode = eq;
+            this.eqBands.push(eq);
+        });
 
-            this.initEqualizer();
+        lastNode.connect(this.analyser);
+        this.analyser.connect(this.audioContext.destination);
 
-            // Connect nodes: source -> EQ -> analyser -> destination
-            let lastNode = this.source;
-            this.eqBands.forEach(band => {
-                lastNode.connect(band);
-                lastNode = band;
-            });
-            lastNode.connect(this.analyser);
-            this.analyser.connect(this.audioContext.destination);
-
-            this.drawVisualizer();
-        } catch (e) {
-            console.error('Web Audio API setup failed.', e);
-            this.ui.visualizer.style.display = 'none';
-            this.ui.equalizerBtn.style.display = 'none';
-        }
+        this.drawVisualizer();
     }
 
     drawVisualizer() {
@@ -322,276 +256,130 @@ class RadioWaveApp {
         const dataArray = new Uint8Array(bufferLength);
         this.analyser.getByteFrequencyData(dataArray);
 
-        this.canvasCtx.fillStyle = '#000';
-        this.canvasCtx.fillRect(0, 0, this.ui.visualizer.width, this.ui.visualizer.height);
+        const canvas = this.ui.visualizer;
+        const ctx = canvas.getContext('2d');
+        const { width, height } = canvas;
 
-        const barWidth = (this.ui.visualizer.width / bufferLength) * 2.5;
-        let barHeight;
+        ctx.clearRect(0, 0, width, height);
+
+        const barWidth = (width / bufferLength) * 2.5;
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {
-            barHeight = dataArray[i];
-            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
-            const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-            const gradient = this.canvasCtx.createLinearGradient(0, this.ui.visualizer.height, 0, this.ui.visualizer.height - barHeight);
-            gradient.addColorStop(0, primaryColor);
-            gradient.addColorStop(1, accentColor);
-            this.canvasCtx.fillStyle = gradient;
-            this.canvasCtx.fillRect(x, this.ui.visualizer.height - barHeight / 2, barWidth, barHeight / 2);
+            const barHeight = dataArray[i] * (height / 255);
+            
+            const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
+            gradient.addColorStop(0, getComputedStyle(document.documentElement).getPropertyValue('--primary-color'));
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0.5)');
+            ctx.fillStyle = gradient;
+
+            ctx.fillRect(x, height - barHeight, barWidth, barHeight);
             x += barWidth + 1;
         }
     }
 
-    /* --- Equalizer --- */
-
     initEqualizer() {
         const frequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
-        this.ui.eqBandsContainer.innerHTML = '';
+        this.ui.eq-bands-container.innerHTML = '';
         frequencies.forEach((freq, i) => {
-            const band = this.audioContext.createBiquadFilter();
-            band.type = 'peaking';
-            band.frequency.value = freq;
-            band.Q.value = 1;
-            band.gain.value = 0;
-            this.eqBands.push(band);
-
-            const bandElement = document.createElement('div');
-            bandElement.className = 'eq-band';
-            bandElement.innerHTML = `
-                <input type="range" min="-20" max="20" step="1" value="0" data-index="${i}">
-                <label>${freq < 1000 ? freq + 'Hz' : (freq / 1000) + 'k'}</label>
+            const band = document.createElement('div');
+            band.className = 'eq-band';
+            band.innerHTML = `
+                <input type="range" min="-12" max="12" step="0.1" value="0" data-index="${i}">
+                <label>${freq < 1000 ? freq : (freq/1000)+'k'} Hz</label>
             `;
-            this.ui.eqBandsContainer.appendChild(bandElement);
+            this.ui.eq-bands-container.appendChild(band);
         });
-    }
 
-    bindEqualizerEvents() {
-        this.ui.eqBandsContainer.addEventListener('input', (e) => {
+        this.ui.eq-bands-container.addEventListener('input', (e) => {
             if (e.target.type === 'range') {
                 const index = e.target.dataset.index;
                 const value = e.target.value;
-                this.eqBands[index].gain.value = value;
-                this.ui.eqPresetsSelect.value = 'custom';
+                if (this.eqBands[index]) {
+                    this.eqBands[index].gain.value = value;
+                }
+                this.ui.eq-preset-select.value = 'custom';
             }
         });
-        this.ui.eqPresetsSelect.addEventListener('change', (e) => this.applyEQPreset(e.target.value));
-        this.ui.resetEqBtn.addEventListener('click', () => this.applyEQPreset('flat'));
+
+        this.ui.eq-preset-select.addEventListener('change', (e) => this.applyEQPreset(e.target.value));
+        this.ui.eq-reset-button.addEventListener('click', () => this.applyEQPreset('flat'));
     }
 
     applyEQPreset(preset) {
         const presets = {
             'flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'bass-boost': [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
-            'rock': [4, 2, -2, -3, -1, 2, 4, 5, 5, 6],
-            'pop': [-1, -2, 0, 2, 4, 4, 2, 0, -1, -2],
-            'vocal-booster': [0, 0, 0, -2, -2, 4, 4, 2, 0, 0],
-            'custom': null
+            'bass-boost': [6, 5, 4, 1, 0, -1, -2, -2, -1, 0],
+            'rock': [4, 2, -2, -4, -2, 2, 4, 5, 5, 4],
+            'pop': [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2],
+            'vocal-booster': [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2]
         };
         const values = presets[preset];
         if (!values) return;
 
-        this.ui.eqPresetsSelect.value = preset;
-        const sliders = this.ui.eqBandsContainer.querySelectorAll('input[type="range"]');
-        sliders.forEach((slider, i) => {
+        this.ui.eq-bands-container.querySelectorAll('input[type=range]').forEach((slider, i) => {
             slider.value = values[i];
-            this.eqBands[i].gain.value = values[i];
+            if (this.eqBands[i]) {
+                this.eqBands[i].gain.value = values[i];
+            }
         });
+        this.ui.eq-preset-select.value = preset;
     }
-
-    /* --- Recording --- */
 
     toggleRecording() {
+        if (!this.audioContext) {
+            alert("Please play a station first to start recording.");
+            return;
+        }
+
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            // Stop recording
             this.mediaRecorder.stop();
-            this.ui.recordBtn.classList.remove('recording');
-            this.ui.recordBtn.title = 'Start Recording';
+            this.ui.record-button.classList.remove('recording');
         } else {
-            if (!this.source) {
-                alert('Please start playing a station first.');
-                return;
-            }
-            try {
-                const dest = this.audioContext.createMediaStreamDestination();
-                this.analyser.connect(dest); // Record post-EQ and post-analyser
-                this.mediaRecorder = new MediaRecorder(dest.stream);
-                
+            // Start recording
+            const destination = this.audioContext.createMediaStreamDestination();
+            this.analyser.connect(destination); // Record post-EQ and visualizer
+            this.mediaRecorder = new MediaRecorder(destination.stream);
+
+            this.mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) this.recordedChunks.push(e.data);
+            };
+
+            this.mediaRecorder.onstop = () => {
+                const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `radiowave-recording-${new Date().toISOString()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
                 this.recordedChunks = [];
-                this.mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) this.recordedChunks.push(e.data);
-                };
+            };
 
-                this.mediaRecorder.onstop = () => {
-                    const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = `radiowave-recording-${new Date().toISOString()}.webm`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                };
-
-                this.mediaRecorder.start();
-                this.ui.recordBtn.classList.add('recording');
-                this.ui.recordBtn.title = 'Stop Recording';
-            } catch (e) {
-                alert('Recording failed to start. Your browser may not support it.');
-                console.error('Recording Error:', e);
-            }
+            this.mediaRecorder.start();
+            this.ui.record-button.classList.add('recording');
         }
     }
 
-    /* --- Keyboard Shortcuts --- */
-    handleKeyPress(e) {
-        // Ignore key presses in input fields
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-        switch (e.code) {
-            case 'Space':
-                e.preventDefault();
-                this.togglePlayPause();
-                break;
-            case 'ArrowRight':
-                this.playNext();
-                break;
-            case 'ArrowLeft':
-                this.playPrevious();
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                this.setVolume(Math.min(1, this.audio.volume + 0.05));
-                this.ui.volumeSlider.value = this.audio.volume;
-                break;
-            case 'ArrowDown':
-                e.preventDefault();
-                this.setVolume(Math.max(0, this.audio.volume - 0.05));
-                this.ui.volumeSlider.value = this.audio.volume;
-                break;
-        }
-    }
-
-    /* --- Theme & Colors --- */
-
-    loadTheme() {
-        const theme = localStorage.getItem('radioWaveTheme') || 'dark';
-        document.body.className = theme + '-theme';
-        this.ui.themeToggle.checked = theme === 'dark';
-    }
-
+    // Theme & Style
     toggleTheme() {
-        const isDark = this.ui.themeToggle.checked;
-        const theme = isDark ? 'dark' : 'light';
-        document.body.className = theme + '-theme';
-        localStorage.setItem('radioWaveTheme', theme);
+        document.body.classList.toggle('dark-theme');
+        document.body.classList.toggle('light-theme');
+        const isDark = document.body.classList.contains('dark-theme');
+        this.ui.themeSwitcher.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    bindColorPickerEvents() {
-        const root = document.documentElement;
-        const colorInputs = {
-            '--primary-color': document.getElementById('primary-color'),
-            '--accent-color': document.getElementById('accent-color'),
-            '--light-text': document.getElementById('text-color-light'),
-            '--dark-text': document.getElementById('text-color-dark'),
-        };
-
-        for (const [prop, input] of Object.entries(colorInputs)) {
-            input.addEventListener('input', (e) => {
-                root.style.setProperty(prop, e.target.value);
-                this.saveColors();
-            });
-        }
-
-        document.getElementById('reset-colors-btn').addEventListener('click', () => this.resetColors());
+    applyAccentColor(color) {
+        document.documentElement.style.setProperty('--primary-color', color);
+        this.ui.color-picker.value = color;
+        localStorage.setItem('accentColor', color);
     }
 
-    saveColors() {
-        const rootStyles = getComputedStyle(document.documentElement);
-        const colors = {
-            primary: rootStyles.getPropertyValue('--primary-color').trim(),
-            accent: rootStyles.getPropertyValue('--accent-color').trim(),
-            textLight: rootStyles.getPropertyValue('--light-text').trim(),
-            textDark: rootStyles.getPropertyValue('--dark-text').trim(),
-        };
-        localStorage.setItem('radioWaveColors', JSON.stringify(colors));
-    }
-
-    loadColors() {
-        const savedColors = JSON.parse(localStorage.getItem('radioWaveColors'));
-        if (savedColors) {
-            const root = document.documentElement;
-            root.style.setProperty('--primary-color', savedColors.primary);
-            root.style.setProperty('--accent-color', savedColors.accent);
-            root.style.setProperty('--light-text', savedColors.textLight);
-            root.style.setProperty('--dark-text', savedColors.textDark);
-
-            document.getElementById('primary-color').value = savedColors.primary;
-            document.getElementById('accent-color').value = savedColors.accent;
-            document.getElementById('text-color-light').value = savedColors.textLight;
-            document.getElementById('text-color-dark').value = savedColors.textDark;
-        }
-    }
-
-    resetColors() {
-        localStorage.removeItem('radioWaveColors');
-        window.location.reload();
-    }
-
-    /* --- Advanced Features --- */
-
-    switchTab(tabId) {
-        this.ui.tabContents.forEach(content => content.classList.remove('active'));
-        this.ui.sidebarTabs.forEach(tab => tab.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-        document.querySelector(`[data-tab='${tabId}']`).classList.add('active');
-    }
-
-    bindTimerEvents() {
-        const timerDisplay = document.getElementById('timer-display');
-        document.querySelectorAll('.timer-option').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const minutes = parseInt(btn.dataset.minutes, 10);
-                this.setSleepTimer(minutes);
-                timerDisplay.textContent = `Stops in ${minutes} minutes.`;
-            });
-        });
-        document.getElementById('cancel-timer-btn').addEventListener('click', () => {
-            this.cancelSleepTimer();
-            timerDisplay.textContent = 'Timer not set';
-        });
-    }
-
-    setSleepTimer(minutes) {
-        this.cancelSleepTimer();
-        this.sleepTimer = setTimeout(() => {
-            this.audio.pause();
-            document.getElementById('timer-display').textContent = 'Timer finished';
-        }, minutes * 60 * 1000);
-    }
-
-    cancelSleepTimer() {
-        if (this.sleepTimer) {
-            clearTimeout(this.sleepTimer);
-            this.sleepTimer = null;
-        }
-    }
-
-    bindImportExportEvents() {
-        document.getElementById('export-btn').addEventListener('click', () => this.exportStations());
-        document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-        document.getElementById('import-file-input').addEventListener('change', (e) => this.importStations(e));
-    }
-
-    exportStations() {
-        const dataStr = JSON.stringify(this.stations, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const exportFileDefaultName = 'radiowave_stations.json';
-        let linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-    }
-
+    // Data & Settings
     importStations(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -602,119 +390,152 @@ class RadioWaveApp {
                 if (Array.isArray(importedStations)) {
                     this.stations = importedStations;
                     this.saveStations();
-                    this.closeAllModals();
+                    this.renderStationList();
                     alert('Stations imported successfully!');
                 } else {
-                    alert('Invalid file format.');
+                    throw new Error('Invalid format');
                 }
             } catch (err) {
-                alert('Error reading file: ' + err.message);
+                alert('Failed to import stations. Please check the file format.');
             }
         };
         reader.readAsText(file);
     }
 
-    /* --- Discovery & Recommendations --- */
+    exportStations() {
+        const data = JSON.stringify(this.stations, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'radiowave_stations.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 
-    renderDiscoverStations() {
-        this.ui.discoverList.innerHTML = '';
-        this.discoverStations.forEach(station => {
-            const item = document.createElement('div');
-            item.className = 'discover-item';
-            item.dataset.name = station.name;
-            item.dataset.url = station.url;
-            item.dataset.genre = station.genre;
-            item.innerHTML = `
-                <div class="station-item-info">
-                    <h3>${station.name}</h3>
-                    <p>${station.genre}</p>
-                </div>
-                <div class="discover-item-controls">
-                    <button class="add-from-discover-btn"><i class="fas fa-plus-circle"></i></button>
-                </div>
-            `;
-            this.ui.discoverList.appendChild(item);
+    setSleepTimer(minutes) {
+        clearTimeout(this.sleepTimer);
+        if (minutes > 0) {
+            this.sleepTimer = setTimeout(() => {
+                this.togglePlayPause(false); // Pause the player
+                this.ui.sleep-timer-select.value = 0;
+            }, minutes * 60 * 1000);
+        }
+    }
+
+    // UI Helpers
+    showModal(modalId) {
+        this.hideAllModals();
+        this.ui[modalId].classList.add('show');
+    }
+
+    hideAllModals() {
+        document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+    }
+
+    switchTab(tabId) {
+        this.ui.tabLinks.forEach(link => link.classList.remove('active'));
+        document.querySelector(`.tab-link[data-tab="${tabId}"]`).classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    // Discovery Features
+    populateGenres() {
+        const genres = [...new Set(this.stations.map(s => s.genre).filter(g => g))];
+        // Add some default genres
+        ['Pop', 'Rock', 'Jazz', 'Electronic', 'Classical', 'Hip-Hop'].forEach(g => {
+            if (!genres.includes(g)) genres.push(g);
+        });
+        this.ui.genre-list.innerHTML = '';
+        genres.sort().forEach(genre => {
+            const li = document.createElement('li');
+            li.textContent = genre;
+            li.addEventListener('click', () => this.filterStationsByGenre(genre));
+            this.ui.genre-list.appendChild(li);
         });
     }
 
-    handleDiscoverListClick(e) {
-        const item = e.target.closest('.discover-item');
-        if (!item) return;
-
-        const newStation = {
-            id: Date.now(),
-            name: item.dataset.name,
-            url: item.dataset.url,
-            genre: item.dataset.genre,
-        };
-
-        if (this.stations.some(s => s.url === newStation.url)) {
-            alert('This station is already in your list.');
-            return;
-        }
-
-        this.stations.push(newStation);
-        this.saveStations();
-        alert(`'${newStation.name}' has been added to your stations!`);
+    filterStationsByGenre(genre) {
         this.switchTab('my-stations-tab');
+        this.ui.search-input.value = genre;
+        this.filterStations(genre);
     }
 
-    updateRecommendations() {
-        this.ui.recommendationsList.innerHTML = '';
-        if (this.currentStationIndex === -1) return;
-
-        const currentGenre = this.stations[this.currentStationIndex].genre;
-        if (!currentGenre) return;
-
-        const recommendations = this.discoverStations.filter(s => s.genre.toLowerCase() === currentGenre.toLowerCase() && !this.stations.some(myS => myS.url === s.url)).slice(0, 3);
-
-        if (recommendations.length === 0) {
-            this.ui.recommendationsList.innerHTML = '<p style="opacity:0.7">No recommendations right now.</p>';
-            return;
-        }
-
-        recommendations.forEach(station => {
-            const item = document.createElement('div');
-            item.className = 'rec-item';
-            item.dataset.name = station.name;
-            item.dataset.url = station.url;
-            item.dataset.genre = station.genre;
-            item.innerHTML = `<h4>${station.name}</h4><p>${station.genre}</p>`;
-            item.addEventListener('click', () => {
-                if (confirm(`Add '${station.name}' to your stations?`)) {
-                    this.handleDiscoverListClick({ target: item });
-                }
+    populateDiscoverStations() {
+        // In a real app, this would be an API call.
+        const discover = [
+            { name: "Jazz Cafe", url: "http://192.99.35.215:5034/stream", logo: "https://cdn-radiotime-logos.tunein.com/s253631q.png", genre: "Jazz" },
+            { name: "Classical FM", url: "http://media-ice.musicradio.com/ClassicFMMP3", logo: "https://cdn-radiotime-logos.tunein.com/s25365q.png", genre: "Classical" },
+            { name: "Radio Paradise", url: "http://stream.radioparadise.com/flacm", logo: "https://i.radioparadise.com/img/logo-circle-250.png", genre: "Eclectic" },
+        ];
+        this.ui.discover-list.innerHTML = '';
+        discover.forEach(station => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <img src="${station.logo}" alt="${station.name}">
+                <span>${station.name}</span>
+                <button class="add-from-discover"><i class="fas fa-plus"></i></button>
+            `;
+            li.querySelector('.add-from-discover').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.stations.push(station);
+                this.saveStations();
+                this.renderStationList();
+                alert(`${station.name} added to your stations!`);
             });
-            this.ui.recommendationsList.appendChild(item);
+            this.ui.discover-list.appendChild(li);
         });
     }
 
-    /* --- Default Data --- */
-
-    getDefaultStations() {
-        return [
-            { id: 1, name: 'Lofi Girl', url: 'https://stream.lofigirl.com/lofi', genre: 'Lofi' },
-            { id: 2, name: 'BBC Radio 1', url: 'http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one', genre: 'Pop' },
-            { id: 3, name: 'KEXP 90.3 FM', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie' },
-        ];
+    updateAIRecommendations(genre) {
+        if (!genre) {
+            this.ui.ai-recommendations.style.display = 'none';
+            return;
+        }
+        // Dummy recommendation logic
+        const recommendations = this.stations.filter(s => s.genre === genre && s.name !== this.stations[this.currentStationIndex].name);
+        if (recommendations.length > 0) {
+            this.ui.recommendations-container.innerHTML = '';
+            recommendations.slice(0, 2).forEach(station => {
+                const div = document.createElement('div');
+                div.className = 'rec-item';
+                div.innerHTML = `<span>Based on ${genre}, try: <b>${station.name}</b></span>`;
+                div.addEventListener('click', () => this.playStation(this.stations.indexOf(station)));
+                this.ui.recommendations-container.appendChild(div);
+            });
+            this.ui.ai-recommendations.style.display = 'block';
+        } else {
+            this.ui.ai-recommendations.style.display = 'none';
+        }
     }
 
-    getDiscoverStations() {
-        return [
-            { name: 'NTS Radio', url: 'http://stream-relay-geo.ntslive.net/stream', genre: 'Electronic' },
-            { name: 'Dublab', url: 'https://dublab.out.airtime.pro/dublab_128.mp3', genre: 'Eclectic' },
-            { name: 'Worldwide FM', url: 'https://worldwidefm.out.airtime.pro/worldwidefm_128.mp3', genre: 'World' },
-            { name: 'The Lot Radio', url: 'https://thelot.out.airtime.pro/thelot_128.mp3', genre: 'Dance' },
-            { name: 'Rinse FM', url: 'https://rinse.fm/streams/rinse.mp3', genre: 'Grime' },
-            { name: 'Jazz24', url: 'https://jazz24.streamguys1.com/jazz24.mp3', genre: 'Jazz' },
-            { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', genre: 'Ambient' },
-            { name: 'Classical KUSC', url: 'https://kusc.streamguys1.com/kusc-128.mp3', genre: 'Classical' },
-            { name: 'Rock FM', url: 'https://live.rockfm.ro/rockfm.aacp', genre: 'Rock' },
-            { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-128', genre: 'Rock' },
-        ];
+    handleKeyPress(e) {
+        // Don't interfere with text inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                this.togglePlayPause();
+                break;
+            case 'ArrowRight':
+                this.playNextStation();
+                break;
+            case 'ArrowLeft':
+                this.playPreviousStation();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.ui.volume-slider.value = Math.min(1, this.audio.volume + 0.05);
+                this.setVolume(this.ui.volume-slider.value);
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                this.ui.volume-slider.value = Math.max(0, this.audio.volume - 0.05);
+                this.setVolume(this.ui.volume-slider.value);
+                break;
+        }
     }
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    new RadioWaveApp();
-});
