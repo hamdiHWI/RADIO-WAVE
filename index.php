@@ -70,7 +70,6 @@
                 <div id="my-stations-tab" class="tab-content active">
                     <div class="station-list-header">
                         <input type="text" id="search-input" placeholder="Search your stations...">
-                        <button id="add-station-button" class="control-button"><i class="fas fa-plus"></i></button>
                     </div>
                     <ul id="station-list">
                         <!-- Stations will be dynamically added here -->
@@ -114,30 +113,11 @@
                     <option value="60">1 Hour</option>
                 </select>
             </div>
-             <div class="setting-item">
-                <h3><i class="fas fa-cogs"></i> Manage Data</h3>
-                <div class="data-buttons">
-                    <button id="import-button" class="control-button"><i class="fas fa-upload"></i> Import Stations</button>
-                    <button id="export-button" class="control-button"><i class="fas fa-download"></i> Export Stations</button>
-                </div>
-                <input type="file" id="import-file-input" style="display: none;" accept=".json">
-            </div>
+             
         </div>
     </div>
 
-    <div id="add-station-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Add New Station</h2>
-            <form id="add-station-form">
-                <input type="text" id="new-station-name" placeholder="Station Name" required>
-                <input type="url" id="new-station-url" placeholder="Stream URL" required>
-                <input type="url" id="new-station-logo" placeholder="Logo URL (Optional)">
-                <input type="text" id="new-station-genre" placeholder="Genre (Optional)">
-                <button type="submit" class="control-button">Save Station</button>
-            </form>
-        </div>
-    </div>
+    
 
     <div id="equalizer-modal" class="modal">
         <div class="modal-content">

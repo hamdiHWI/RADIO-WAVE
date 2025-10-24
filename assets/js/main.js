@@ -20,9 +20,9 @@ class RadioWave {
         this.ui = {}; // To cache UI elements
     }
 
-    init() {
+    async init() {
         this.initUI();
-        this.loadStations();
+        await this.loadStations();
         this.bindEvents();
         this.applyAccentColor(localStorage.getItem('accentColor') || '#FF8C00');
         if (localStorage.getItem('theme') === 'light') {
@@ -102,17 +102,25 @@ class RadioWave {
     }
 
     // Station Management
-    loadStations() {
-        const savedStations = localStorage.getItem('stations');
-        this.stations = savedStations ? JSON.parse(savedStations) : [
-            { name: "Lofi Girl", url: "https://play.streamafrica.net/lofiradio", logo: "https://i.ytimg.com/vi/jfKfPfyJRdk/maxresdefault.jpg", genre: "Lofi" },
-            { name: "Classic Rock", url: "http://198.178.123.23:8722/stream", logo: "https://cdn-radiotime-logos.tunein.com/s292341q.png", genre: "Rock" },
-        ];
-        this.renderStationList();
-    }
-
-    saveStations() {
-        localStorage.setItem('stations', JSON.stringify(this.stations));
+    async loadStations() {
+        try {
+            const response = await fetch('/api/get_stations.php');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const stations = await response.json();
+            this.stations = stations.map(station => ({
+                ...station,
+                logo: station.logo_url // map db field to app field
+            }));
+            this.renderStationList();
+            if (this.stations.length > 0 && this.currentStationIndex === -1) {
+                this.playStation(0);
+            }
+        } catch (error) {
+            console.error("Could not load stations:", error);
+            this.ui.stationList.innerHTML = `<li class="error">Could not load stations.</li>`;
+        }
     }
 
     renderStationList() {
@@ -127,21 +135,6 @@ class RadioWave {
             `;
             this.ui.stationList.appendChild(li);
         });
-    }
-
-    addStation(e) {
-        e.preventDefault();
-        const newStation = {
-            name: this.ui.newStationName.value,
-            url: this.ui.newStationUrl.value,
-            logo: this.ui.newStationLogo.value,
-            genre: this.ui.newStationGenre.value
-        };
-        this.stations.push(newStation);
-        this.saveStations();
-        this.renderStationList();
-        this.ui.addStationForm.reset();
-        this.hideAllModals();
     }
 
     handleStationClick(e) {
@@ -298,7 +291,7 @@ class RadioWave {
             if (e.target.type === 'range') {
                 const index = e.target.dataset.index;
                 const value = e.target.value;
-                if (this.eqBands[index]) {
+                if (.eqBands[index]) {
                     this.eqBands[index].gain.value = value;
                 }
                 this.ui.eqPresetSelect.value = 'custom';
@@ -383,37 +376,14 @@ class RadioWave {
     }
 
     // Data & Settings
-    importStations(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const importedStations = JSON.parse(e.target.result);
-                if (Array.isArray(importedStations)) {
-                    this.stations = importedStations;
-                    this.saveStations();
-                    this.renderStationList();
-                    alert('Stations imported successfully!');
-                } else {
-                    throw new Error('Invalid format');
-                }
-            } catch (err) {
-                alert('Failed to import stations. Please check the file format.');
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    exportStations() {
-        const data = JSON.stringify(this.stations, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'radiowave_stations.json';
-        a.click();
-        URL.revokeObjectURL(url);
+    setSleepTimer(minutes) {
+        clearTimeout(this.sleepTimer);
+        if (minutes > 0) {
+            this.sleepTimer = setTimeout(() => {
+                this.togglePlayPause(false); // Pause the player
+                this.ui.sleepTimerSelect.value = 0;
+            }, minutes * 60 * 1000);
+        }
     }
 
     setSleepTimer(minutes) {
